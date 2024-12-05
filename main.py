@@ -1,17 +1,16 @@
 import spotipy
 import cv2
 import mediapipe as mp
-# import pyautogui
 import tkinter as tk
 import math
 import time
-
 from config import client_secret, client_id, redirect_uri
-
 from spotify_controller import SpotifyController
+from shazam_controller import shazam_controller
 
+# Initialize controllers
 spotify = SpotifyController(client_id, client_secret, redirect_uri)
-
+shazam = shazam_controller()
 
 # Get screen dimensions using Tkinter
 root = tk.Tk()
@@ -36,7 +35,7 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, window_height)
 # OpenCV named window
 cv2.namedWindow("Camera Feed", cv2.WINDOW_AUTOSIZE)
 cv2.moveWindow("Camera Feed", window_x, window_y)
-root.resizable(False,False)
+root.resizable(False, False)
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -48,12 +47,15 @@ button_height = 100
 
 # Define buttons relative to the OpenCV window
 buttons = {
-            # x1                         , y1                           x2                                      ,  y2
-    "Play":  (int(2  * screen_width / 10), 10, int(2  * screen_width / 10) + button_width, 10 + button_height),
-    "Skip":  (int(4  * screen_width / 10), 10, int(4  * screen_width / 10) + button_width, 10 + button_height),
-    "Vol +": (int(6  * screen_width / 10), 10, int(6  * screen_width / 10) + button_width, 10 + button_height),
-    "Vol -": (int(8  * screen_width / 10), 10, int(8  * screen_width / 10) + button_width, 10 + button_height),
+    "Recognize Track": (int(1 * screen_width / 10), 10, int(1 * screen_width / 10) + button_width, 10 + button_height),
+    "Play": (int(2 * screen_width / 10), 10, int(2 * screen_width / 10) + button_width, 10 + button_height),
+    "Pause": (int(3 * screen_width / 10), 10, int(3 * screen_width / 10) + button_width, 10 + button_height),
+    "Skip": (int(4 * screen_width / 10), 10, int(4 * screen_width / 10) + button_width, 10 + button_height),
+    "Previous Track": (int(5 * screen_width / 10), 10, int(5 * screen_width / 10) + button_width, 10 + button_height),  
+    "Vol +": (int(6 * screen_width / 10), 10, int(6 * screen_width / 10) + button_width, 10 + button_height),
+    "Vol -": (int(8 * screen_width / 10), 10, int(8 * screen_width / 10) + button_width, 10 + button_height),
 }
+
 
 def is_cursor_hovering(cursor_pos, button):
     """
@@ -84,6 +86,7 @@ def detect_pinch(landmarks):
 
 last_clicked_button = None
 
+
 def handle_pinch_event(button_name):
     global last_clicked_button
     """
@@ -96,22 +99,38 @@ def handle_pinch_event(button_name):
     if current_time - last_trigger_time > cooldown_period:
         print(f"{button_name} button clicked")
         last_clicked_button = button_name  # Store the clicked button name
-        if button_name == "Play":
+        if button_name == "Recognize Track":
+            print("Recognizing Track...")
+            song_details = shazam.listen_and_recognize()
+            if song_details:
+                print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
+                search_query = f"{song_details['track']} {song_details['artist']}"
+                spotify.play_search_result(search_query)
+            else:
+                print("Could not recognize the song.")
+        elif button_name == "Play":
             print("Play")
             spotify.play()
+        elif button_name == "Pause":
+            print("Pause")
+            spotify.pause()
         elif button_name == "Skip":
             print("Next")
             spotify.next_track()
+        elif button_name == "Previous Track":  # Handle the Previous Track button
+            print("Previous Track")
+            spotify.previous_track()
         elif button_name == "Vol +":
             print("Volume Up")
-            spotify.volume_up(10) 
+            spotify.volume_up(10)
         elif button_name == "Vol -":
             print("Volume Down")
-            spotify.volume_down(10) 
-
+            spotify.volume_down(10)
 
         # Update the last trigger time
         last_trigger_time = current_time
+
+
 
 index_finger_color = mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=6, circle_radius=5)  # Green
 default_color = mp.solutions.drawing_utils.DrawingSpec(color=(255, 255, 255), thickness=3, circle_radius=2)  # White
@@ -134,7 +153,7 @@ def draw_landmarks_with_custom_color(frame, hand_landmarks):
         y = int(landmark.y * frame.shape[0])
         cv2.circle(frame, (x, y), index_finger_color.circle_radius, index_finger_color.color, -1)
 
-# Inside the main loop, 
+# Inside the main loop
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -160,13 +179,6 @@ while cap.isOpened():
             cursor_y = int(index_finger_tip.y * frame.shape[0])  # Use frame height
             cursor_pos = (cursor_x, cursor_y)
 
-            # Map frame coordinates to screen coordinates
-            screen_cursor_x = int(cursor_x * screen_width / frame.shape[1])
-            screen_cursor_y = int(cursor_y * screen_height / frame.shape[0])
-
-            # Move the cursor
-            # pyautogui.moveTo(screen_cursor_x, screen_cursor_y)
-
             # Detect pinching gesture and perform button actions
             is_currently_pinching = detect_pinch(hand_landmarks.landmark)
 
@@ -188,7 +200,6 @@ while cap.isOpened():
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, -1)
         cv2.putText(frame, button_name, (x1 + (button_width//3 - 2), y1 + (button_height//2 - 2)),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
-
 
     # Display the last clicked button on the screen
     if last_clicked_button:
