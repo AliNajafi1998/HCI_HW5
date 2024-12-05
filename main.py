@@ -47,14 +47,15 @@ button_height = 100
 
 # Define buttons relative to the OpenCV window
 buttons = {
-    # Button coordinates: x1, y1, x2, y2
     "Recognize Track": (int(1 * screen_width / 10), 10, int(1 * screen_width / 10) + button_width, 10 + button_height),
     "Play": (int(2 * screen_width / 10), 10, int(2 * screen_width / 10) + button_width, 10 + button_height),
     "Pause": (int(3 * screen_width / 10), 10, int(3 * screen_width / 10) + button_width, 10 + button_height),
     "Skip": (int(4 * screen_width / 10), 10, int(4 * screen_width / 10) + button_width, 10 + button_height),
+    "Previous Track": (int(5 * screen_width / 10), 10, int(5 * screen_width / 10) + button_width, 10 + button_height),  
     "Vol +": (int(6 * screen_width / 10), 10, int(6 * screen_width / 10) + button_width, 10 + button_height),
     "Vol -": (int(8 * screen_width / 10), 10, int(8 * screen_width / 10) + button_width, 10 + button_height),
 }
+
 
 def is_cursor_hovering(cursor_pos, button):
     """
@@ -85,6 +86,7 @@ def detect_pinch(landmarks):
 
 last_clicked_button = None
 
+
 def handle_pinch_event(button_name):
     global last_clicked_button
     """
@@ -99,7 +101,7 @@ def handle_pinch_event(button_name):
         last_clicked_button = button_name  # Store the clicked button name
         if button_name == "Recognize Track":
             print("Recognizing Track...")
-            song_details = shazam.listen_and_recognize(duration=10)  # Record and recognize for 10 seconds
+            song_details = shazam.listen_and_recognize()
             if song_details:
                 print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
                 search_query = f"{song_details['track']} {song_details['artist']}"
@@ -115,6 +117,9 @@ def handle_pinch_event(button_name):
         elif button_name == "Skip":
             print("Next")
             spotify.next_track()
+        elif button_name == "Previous Track":  # Handle the Previous Track button
+            print("Previous Track")
+            spotify.previous_track()
         elif button_name == "Vol +":
             print("Volume Up")
             spotify.volume_up(10)
@@ -124,6 +129,7 @@ def handle_pinch_event(button_name):
 
         # Update the last trigger time
         last_trigger_time = current_time
+
 
 
 index_finger_color = mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=6, circle_radius=5)  # Green

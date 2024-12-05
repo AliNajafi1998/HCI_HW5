@@ -40,6 +40,33 @@ class SpotifyController:
         except Exception as e:
             print(f"Error during next track: {e}")
     
+    def previous_track(self):
+        """
+        Skip to the previous track on the current active device.
+        """
+        try:
+            self.sp.previous_track()
+            print("Skipped to the previous track.")
+        except Exception as e:
+            print(f"Error during previous track: {e}")
+
+    def like_current_track(self):
+        """
+        Add the current track to the user's liked songs.
+        """
+        try:
+            current_track = self.sp.current_playback()
+            if current_track and 'item' in current_track and current_track['item']:
+                track_id = current_track['item']['id']
+                self.sp.current_user_saved_tracks_add([track_id])
+                print(f"Added track {current_track['item']['name']} by {current_track['item']['artists'][0]['name']} to liked songs.")
+            else:
+                print("No track is currently playing.")
+        except Exception as e:
+            print(f"Error liking the current track: {e}")
+
+
+    
     def volume_up(self, step=10):
         """
         Increase volume by a specified step.
