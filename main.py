@@ -7,6 +7,24 @@ import time
 from config import client_secret, client_id, redirect_uri
 from spotify_controller import SpotifyController
 from shazam_controller import shazam_controller
+import threading
+
+
+
+class ThreadWithReturnValue(threading.Thread):
+    
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs={}, Verbose=None):
+        threading.Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args,
+                                                **self._kwargs)
+    def join(self, *args):
+        threading.Thread.join(self, *args)
+        return self._return
 
 # Initialize controllers
 spotify = SpotifyController(client_id, client_secret, redirect_uri)
@@ -42,18 +60,23 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
 
-button_width = 150
+button_width = 200
 button_height = 100
 
 # Define buttons relative to the OpenCV window
+
+base_x = int(screen_width / 10)
+base_y = int(screen_height / 20)
+
+# x1,y1, x2, y2
 buttons = {
-    "Recognize Track": (int(1 * screen_width / 10), 10, int(1 * screen_width / 10) + button_width, 10 + button_height),
-    "Play": (int(2 * screen_width / 10), 10, int(2 * screen_width / 10) + button_width, 10 + button_height),
-    "Pause": (int(3 * screen_width / 10), 10, int(3 * screen_width / 10) + button_width, 10 + button_height),
-    "Skip": (int(4 * screen_width / 10), 10, int(4 * screen_width / 10) + button_width, 10 + button_height),
-    "Previous Track": (int(5 * screen_width / 10), 10, int(5 * screen_width / 10) + button_width, 10 + button_height),  
-    "Vol +": (int(6 * screen_width / 10), 10, int(6 * screen_width / 10) + button_width, 10 + button_height),
-    "Vol -": (int(8 * screen_width / 10), 10, int(8 * screen_width / 10) + button_width, 10 + button_height),
+    "Find":  (1 * base_x, base_y, 1 * base_x + button_width, base_y + button_height),
+    "Play":  (3 * base_x, base_y, 3 * base_x + button_width, base_y + button_height),
+    "Pause": (5 * base_x, base_y, 5 * base_x + button_width, base_y + button_height),
+    "Next":  (7 * base_x, base_y, 7 * base_x + button_width, base_y + button_height),
+    "Prev":  (9 * base_x, base_y, 9 * base_x + button_width, base_y + button_height),  
+    # "Vol +": (int(6 * screen_width / 10), 10, int(6 * screen_width / 10) + button_width, 10 + button_height),
+    # "Vol -": (int(8 * screen_width / 10), 10, int(8 * screen_width / 10) + button_width, 10 + button_height),
 }
 
 
@@ -99,27 +122,35 @@ def handle_pinch_event(button_name):
     if current_time - last_trigger_time > cooldown_period:
         print(f"{button_name} button clicked")
         last_clicked_button = button_name  # Store the clicked button name
-        if button_name == "Recognize Track":
+        if button_name == "Find":
             print("Recognizing Track...")
-            song_details = shazam.listen_and_recognize()
-            if song_details:
-                print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
-                search_query = f"{song_details['track']} {song_details['artist']}"
-                spotify.play_search_result(search_query)
-            else:
-                print("Could not recognize the song.")
+            def play_the_song_on_spotify():
+                song_details = shazam.listen_and_recognize()
+                if song_details:
+                    print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
+                    search_query = f"{song_details['track']} {song_details['artist']}"
+                    spotify.play_search_result(search_query)
+                else:
+                    print("Could not recognize the song.")
+            thread = ThreadWithReturnValue(target=play_the_song_on_spotify)
+            thread.start()
         elif button_name == "Play":
             print("Play")
-            spotify.play()
+            thread = threading.Thread(target = spotify.play)
+            thread.start()
+
         elif button_name == "Pause":
             print("Pause")
-            spotify.pause()
-        elif button_name == "Skip":
+            thread = threading.Thread(target = spotify.pause)
+            thread.start()
+        elif button_name == "Next":
             print("Next")
-            spotify.next_track()
-        elif button_name == "Previous Track":  # Handle the Previous Track button
+            thread = threading.Thread(target = spotify.next_track)
+            thread.start()
+        elif button_name == "Prev":  # Handle the Previous Track button
             print("Previous Track")
-            spotify.previous_track()
+            thread = threading.Thread(target = spotify.previous_track)
+            thread.start()
         elif button_name == "Vol +":
             print("Volume Up")
             spotify.volume_up(10)
