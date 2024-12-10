@@ -12,7 +12,6 @@ import threading
 
 
 class ThreadWithReturnValue(threading.Thread):
-    
     def __init__(self, group=None, target=None, name=None,
                  args=(), kwargs={}, Verbose=None):
         threading.Thread.__init__(self, group, target, name, args, kwargs)
@@ -110,59 +109,6 @@ def detect_pinch(landmarks):
 last_clicked_button = None
 
 
-def handle_pinch_event(button_name):
-    global last_clicked_button
-    """
-    Handle the pinch event and trigger button actions.
-    """
-    global last_trigger_time
-    current_time = time.time()
-
-    # Check if enough time has passed since the last event
-    if current_time - last_trigger_time > cooldown_period:
-        print(f"{button_name} button clicked")
-        last_clicked_button = button_name  # Store the clicked button name
-        if button_name == "Find":
-            print("Recognizing Track...")
-            def play_the_song_on_spotify():
-                song_details = shazam.listen_and_recognize()
-                if song_details:
-                    print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
-                    search_query = f"{song_details['track']} {song_details['artist']}"
-                    spotify.play_search_result(search_query)
-                else:
-                    print("Could not recognize the song.")
-            thread = ThreadWithReturnValue(target=play_the_song_on_spotify)
-            thread.start()
-        elif button_name == "Play":
-            print("Play")
-            thread = threading.Thread(target = spotify.play)
-            thread.start()
-
-        elif button_name == "Pause":
-            print("Pause")
-            thread = threading.Thread(target = spotify.pause)
-            thread.start()
-        elif button_name == "Next":
-            print("Next")
-            thread = threading.Thread(target = spotify.next_track)
-            thread.start()
-        elif button_name == "Prev":  # Handle the Previous Track button
-            print("Previous Track")
-            thread = threading.Thread(target = spotify.previous_track)
-            thread.start()
-        elif button_name == "Vol +":
-            print("Volume Up")
-            spotify.volume_up(10)
-        elif button_name == "Vol -":
-            print("Volume Down")
-            spotify.volume_down(10)
-
-        # Update the last trigger time
-        last_trigger_time = current_time
-
-
-
 index_finger_color = mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=6, circle_radius=5)  # Green
 default_color = mp.solutions.drawing_utils.DrawingSpec(color=(255, 255, 255), thickness=3, circle_radius=2)  # White
 
@@ -184,6 +130,79 @@ def draw_landmarks_with_custom_color(frame, hand_landmarks):
         y = int(landmark.y * frame.shape[0])
         cv2.circle(frame, (x, y), index_finger_color.circle_radius, index_finger_color.color, -1)
 
+# Global variables for messages
+message_text = ""
+message_display_time = 0  # Timestamp when the message should disappear
+message_duration = 10  # Display the message for 10 seconds
+
+def display_message(frame, text, position=(50, 50), font_scale=1, color=(0, 255, 0), thickness=2):
+    """
+    Display a message on the OpenCV frame.
+    """
+    cv2.putText(frame, text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+
+# Modify the "Find" button logic
+def handle_pinch_event(button_name):
+    global last_clicked_button, message_text, message_display_time
+    """
+    Handle the pinch event and trigger button actions.
+    """
+    global last_trigger_time
+    current_time = time.time()
+
+    # Check if enough time has passed since the last event
+    if current_time - last_trigger_time > cooldown_period:
+        print(f"{button_name} button clicked")
+        last_clicked_button = button_name  # Store the clicked button name
+        if button_name == "Find":
+            print("Recognizing Track...")
+
+            # Show "Find..." message immediately when the button is clicked
+            message_text = "Listening ..."
+            message_display_time = time.time() + message_duration
+
+            def play_the_song_on_spotify():
+                global message_text, message_display_time
+                song_details = shazam.listen_and_recognize()
+                if song_details:
+                    print(f"Recognized Song: {song_details['track']} by {song_details['artist']}")
+                    search_query = f"{song_details['track']} {song_details['artist']}"
+                    spotify.play_search_result(search_query)
+
+                    # Show success message
+                    message_text = f"Playing: {song_details['track']} by {song_details['artist']}"
+                else:
+                    print("Could not recognize the song.")
+                    # Show error message
+                    message_text = "Song not recognized."
+
+                # Extend message display time after recognition
+                message_display_time = time.time() + message_duration
+
+            thread = ThreadWithReturnValue(target=play_the_song_on_spotify)
+            thread.start()
+
+        elif button_name == "Play":
+            print("Play")
+            thread = threading.Thread(target=spotify.play)
+            thread.start()
+
+        elif button_name == "Pause":
+            print("Pause")
+            thread = threading.Thread(target=spotify.pause)
+            thread.start()
+        elif button_name == "Next":
+            print("Next")
+            thread = threading.Thread(target=spotify.next_track)
+            thread.start()
+        elif button_name == "Prev":  # Handle the Previous Track button
+            print("Previous Track")
+            thread = threading.Thread(target=spotify.previous_track)
+            thread.start()
+
+        # Update the last trigger time
+        last_trigger_time = current_time
+
 # Inside the main loop
 while cap.isOpened():
     ret, frame = cap.read()
@@ -201,8 +220,7 @@ while cap.isOpened():
     cursor_pos = (0, 0)
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                draw_landmarks_with_custom_color(frame, hand_landmarks)
+            draw_landmarks_with_custom_color(frame, hand_landmarks)
 
             # Get the index fingertip coordinates
             index_finger_tip = hand_landmarks.landmark[8]
@@ -222,15 +240,18 @@ while cap.isOpened():
             # Update the pinching state
             is_pinching = is_currently_pinching
 
-
     # Draw buttons on the frame
     for button_name, (x1, y1, x2, y2) in buttons.items():
         color = (150, 150, 150)  # Default button color
         if is_cursor_hovering(cursor_pos, (x1, y1, x2, y2)):
             color = (255, 255, 0)  # Change color to cyan when hovered
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, -1)
-        cv2.putText(frame, button_name, (x1 + (button_width//3 - 2), y1 + (button_height//2 - 2)),
+        cv2.putText(frame, button_name, (x1 + (button_width // 3 - 2), y1 + (button_height // 2 - 2)),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+
+    # Display the message if it should be shown
+    if time.time() < message_display_time:
+        display_message(frame, message_text, position=(50, base_y + button_height + 100), font_scale=1, color=(0, 255, 0), thickness=2)
 
     # Display the last clicked button on the screen
     if last_clicked_button:
