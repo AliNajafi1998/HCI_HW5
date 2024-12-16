@@ -13,71 +13,7 @@ import threading
 import os
 import tkinter as tk
 from tkinter import messagebox
-
-def get_credentials():
-    # Check if credentials already exist in environment variables
-    client_id = os.getenv("CLIENT_ID")
-    client_secret = os.getenv("CLIENT_SECRET")
-    
-    if client_id and client_secret:
-        return client_id, client_secret
-
-    def submit():
-        nonlocal client_id, client_secret
-        client_id = client_id_entry.get()
-        client_secret = client_secret_entry.get()
-
-        if client_id and client_secret:
-            # Save credentials to environment variables (optional)
-            os.environ["CLIENT_ID"] = client_id
-            os.environ["CLIENT_SECRET"] = client_secret
-            root.destroy()  # Close the window after submission
-        else:
-            messagebox.showerror("Error", "Both fields are required!")
-
-    # Initialize the tkinter root window
-    root = tk.Tk()
-    root.title("Enter Credentials")
-    
-    # Ensure proper rendering of the window on macOS
-    root.update_idletasks()
-
-    # Create labels and entry fields
-    tk.Label(root, text="Client ID:").pack(padx=10, pady=5, anchor="w")
-    client_id_entry = tk.Entry(root, width=40)
-    client_id_entry.pack(padx=10, pady=5, fill="x")
-
-    tk.Label(root, text="Client Secret:").pack(padx=10, pady=5, anchor="w")
-    client_secret_entry = tk.Entry(root, width=40, show="*")
-    client_secret_entry.pack(padx=10, pady=5, fill="x")
-
-    # Create a submit button
-    submit_button = tk.Button(root, text="Submit", command=submit)
-    submit_button.pack(pady=10)
-
-    # Center the window on the screen
-    window_width = root.winfo_reqwidth()
-    window_height = root.winfo_reqheight()
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    x = int((screen_width / 2) - (window_width / 2))
-    y = int((screen_height / 2) - (window_height / 2))
-    root.geometry(f"+{x}+{y}")
-
-    client_id, client_secret = None, None
-    root.mainloop()
-
-    return client_id, client_secret
-
-
-# Get credentials
-client_id, client_secret = get_credentials()
-
-if client_id and client_secret:
-    print("Client ID:", client_id)
-    print("Client Secret:", client_secret)
-else:
-    print("No credentials provided.")
+from config import client_id, client_secret
 
     
 class ThreadWithReturnValue(threading.Thread):
