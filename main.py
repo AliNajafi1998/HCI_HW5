@@ -10,17 +10,27 @@ from shazam_controller import shazam_controller
 import threading
 
 
+import os
 import tkinter as tk
 from tkinter import messagebox
 
-
 def get_credentials():
+    # Check if credentials already exist in environment variables
+    client_id = os.getenv("CLIENT_ID")
+    client_secret = os.getenv("CLIENT_SECRET")
+    
+    if client_id and client_secret:
+        return client_id, client_secret
+
     def submit():
         nonlocal client_id, client_secret
         client_id = client_id_entry.get()
         client_secret = client_secret_entry.get()
 
         if client_id and client_secret:
+            # Save credentials to environment variables (optional)
+            os.environ["CLIENT_ID"] = client_id
+            os.environ["CLIENT_SECRET"] = client_secret
             root.destroy()  # Close the window after submission
         else:
             messagebox.showerror("Error", "Both fields are required!")
@@ -68,6 +78,7 @@ if client_id and client_secret:
     print("Client Secret:", client_secret)
 else:
     print("No credentials provided.")
+
     
 class ThreadWithReturnValue(threading.Thread):
     def __init__(self, group=None, target=None, name=None,
