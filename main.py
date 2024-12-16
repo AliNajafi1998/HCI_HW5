@@ -1,4 +1,3 @@
-import spotipy
 import cv2
 import mediapipe as mp
 import tkinter as tk
@@ -8,13 +7,6 @@ from config import client_secret, client_id, redirect_uri
 from spotify_controller import SpotifyController
 from shazam_controller import shazam_controller
 import threading
-
-
-import os
-import tkinter as tk
-from tkinter import messagebox
-from config import client_id, client_secret
-
     
 class ThreadWithReturnValue(threading.Thread):
     def __init__(self, group=None, target=None, name=None,
